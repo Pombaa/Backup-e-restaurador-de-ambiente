@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Sistema de Backup
+Comment=Interface gráfica para backup e restauração do ambiente
+Exec=/home/pomba/ambiente/ambiente-gui.sh
+Icon=drive-harddisk
+Terminal=false
+Type=Application
+Categories=System;Utility;
+StartupNotify=true
+Keywords=backup;restore;ambiente;configuração;

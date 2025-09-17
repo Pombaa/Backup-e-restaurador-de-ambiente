@@ -2,6 +2,29 @@
 
 Conjunto de scripts para snapshot e restauração modular do ambiente Arch/Linux.
 
+## ✨ Novo: Interface Gráfica
+
+Agora com interface gráfica **zenity** para facilitar o uso!
+
+```bash
+# Interface completa (backup + restauração)
+./ambiente-gui.sh
+
+# Apenas backup
+./backup-gui.sh
+
+# Apenas restauração
+./restore-gui.sh
+```
+
+**Recursos da GUI:**
+- 🎯 Seleção visual de perfis e categorias
+- ⚙️ Configuração de opções avançadas
+- 📊 Indicador de progresso
+- 🧪 Modo de teste (dry-run)
+- 📋 Resumo detalhado antes da execução
+- 💡 Ajuda contextual integrada
+
 ## Quick Start - Passo a Passo
 
 ### 1. Primeiro uso - Configuração inicial
@@ -52,6 +75,60 @@ FULL_USER_LOCAL=0 ./backup-completo.sh --profile full --compression zst
 [backup] Arquivo final: /home/usuario/backups/env-backup-20250917-095521.tar.zst (tamanho 4,9G)
 [backup] Concluído.
 ```
+
+## 🖱️ Interface Gráfica (GUI)
+
+### Instalação e Uso das GUIs
+
+```bash
+# Verificar se zenity está instalado (necessário para as GUIs)
+sudo pacman -S zenity
+
+# Launcher principal (menu com backup + restauração)
+./ambiente-gui.sh
+
+# GUIs específicas
+./backup-gui.sh     # Apenas interface de backup
+./restore-gui.sh    # Apenas interface de restauração
+```
+
+### Recursos das Interfaces Gráficas
+
+**🚀 Backup GUI:**
+- Seleção visual de perfis (core, full, share, minimal, custom)
+- Configuração de categorias personalizadas
+- Opções avançadas (sanitização, compressão, sudo)
+- Nome personalizado para arquivos
+- Indicador de progresso em tempo real
+- Confirmação visual com resumo
+
+**🗃️ Restore GUI:**
+- Auto-detecção de backups em ~/backups/
+- Seleção visual de arquivo de backup
+- Listagem automática de categorias disponíveis
+- Modo teste (dry-run) recomendado
+- Opções de restauração configuráveis
+- Verificação de integridade opcional
+
+**💡 Vantagens da GUI:**
+- Ideal para usuários não técnicos
+- Previne erros de sintaxe de comando
+- Interface amigável e intuitiva
+- Ajuda contextual integrada
+- Feedback visual de progresso
+- Confirmações de segurança
+
+### Criando Launcher Desktop
+
+```bash
+# Copiar para aplicações do usuário
+cp sistema-backup.desktop ~/.local/share/applications/
+
+# Ou instalar no sistema
+sudo cp sistema-backup.desktop /usr/share/applications/
+```
+
+Após isso, o "Sistema de Backup" aparecerá no menu de aplicações do seu desktop environment.
 
 ### 3. Verificando o backup gerado
 
