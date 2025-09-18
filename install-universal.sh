@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local}"
 USER_INSTALL="${USER_INSTALL:-0}"
 

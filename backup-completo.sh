@@ -4,7 +4,7 @@
 # =========================================================================
 set -euo pipefail
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 # Variáveis de controle (podem ser exportadas antes de rodar):
 #   FULL_SYSTEM_THEMES=1     -> copia TODOS os diretórios de /usr/share/themes e /usr/share/icons (default 1)
