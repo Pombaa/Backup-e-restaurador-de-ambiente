@@ -7,11 +7,22 @@ Sistema completo de backup e restauração de ambiente Linux com interface gráf
 ### Via AUR (Arch Linux) - Recomendado
 
 ```bash
-# Com yay
+# Atualizar base de dados (importante para novos pacotes)
+yay -Syy
+
+# Instalar ambiente-backup
 yay -S ambiente-backup
 
-# Com paru
-paru -S ambiente-backup
+# Ou em um comando
+yay -Syy && yay -S ambiente-backup
+```
+
+**Se não aparecer na busca:**
+```bash
+# Instalação manual do AUR (sempre funciona)
+git clone https://aur.archlinux.org/ambiente-backup.git
+cd ambiente-backup
+makepkg -si
 ```
 
 ### Download Direto
@@ -44,6 +55,21 @@ backup-ambiente    # Mesmo que ambiente-backup
 backup-env         # Interface apenas para backup
 restore-env        # Interface apenas para restauração
 ```
+
+## ⚠️ Importante para Novos Usuários
+
+**Pacote novo no AUR?** Se você receber "Nenhum pacote AUR localizado":
+
+```bash
+# Força sincronização do AUR
+yay -Syy
+
+# Ou instale manualmente:
+git clone https://aur.archlinux.org/ambiente-backup.git
+cd ambiente-backup && makepkg -si
+```
+
+💡 Novos pacotes no AUR podem levar alguns minutos para aparecer na busca.
 
 ## ✨ Interface Gráfica
 
