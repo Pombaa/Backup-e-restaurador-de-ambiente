@@ -1,3 +1,30 @@
+# Arquivos específicos do projeto ambiente-backup
+
+# Arquivos de build do makepkg
+*.pkg.tar.zst
+*.pkg.tar.xz
+*.pkg.tar.gz
+pkg/
+src/
+build/
+
+# Diretórios temporários de clone
+Backup-e-restaurador-de-ambiente/
+*ambiente-backup*/
+
+# Arquivos de AUR
+aur-*/
+*.SRCINFO.tmp
+
+# Logs e temporários
+*.log
+*.tmp
+.makepkg/
+
+# Backups de teste
+test-backups/
+backups-test/
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
