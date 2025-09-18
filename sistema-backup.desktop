@@ -1,10 +1,12 @@
 [Desktop Entry]
-Name=Sistema de Backup
-Comment=Interface gráfica para backup e restauração do ambiente
-Exec=/home/pomba/ambiente/ambiente-gui.sh
+Name=Ambiente Backup
+Name[pt_BR]=Backup do Ambiente
+Comment=Sistema completo de backup e restauração do ambiente Linux
+Comment[pt_BR]=Sistema completo de backup e restauração do ambiente Linux
+Exec=ambiente-backup
 Icon=drive-harddisk
 Terminal=false
 Type=Application
-Categories=System;Utility;
+Categories=System;Utility;Archiving;
 StartupNotify=true
-Keywords=backup;restore;ambiente;configuração;
+Keywords=backup;restore;ambiente;configuração;linux;system;

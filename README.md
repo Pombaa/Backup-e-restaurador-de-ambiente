@@ -1,19 +1,65 @@
-# Ambiente (Backup & Restauração)
+# Ambiente Backup
 
-Conjunto de scripts para snapshot e restauração modular do ambiente Arch/Linux.
+Sistema completo de backup e restauração de ambiente Linux com interface gráfica intuitiva.
 
-## ✨ Novo: Interface Gráfica
+## 📦 Instalação
+
+### Via AUR (Arch Linux) - Recomendado
+
+```bash
+# Com yay
+yay -S ambiente-backup
+
+# Com paru
+paru -S ambiente-backup
+```
+
+### Download Direto
+
+1. Baixe a versão mais recente em [Releases](https://github.com/Pombaa/Backup-e-restaurador-de-ambiente/releases)
+2. Instale o pacote:
+```bash
+sudo pacman -U ambiente-backup-*.pkg.tar.zst
+```
+
+### Instalação Manual (Desenvolvimento)
+
+```bash
+git clone https://github.com/Pombaa/Backup-e-restaurador-de-ambiente.git
+cd Backup-e-restaurador-de-ambiente/ambiente
+chmod +x *.sh
+./install.sh
+```
+
+## 🚀 Uso Rápido
+
+Após a instalação, use o comando principal:
+
+```bash
+# Interface gráfica completa
+ambiente-backup
+
+# Comandos alternativos
+backup-ambiente    # Mesmo que ambiente-backup
+backup-env         # Interface apenas para backup
+restore-env        # Interface apenas para restauração
+```
+
+## ✨ Interface Gráfica
 
 Agora com interface gráfica **zenity** para facilitar o uso!
 
 ```bash
-# Interface completa (backup + restauração)
+# Interface gráfica principal (recomendado)
+ambiente-backup
+
+# Interfaces específicas
+backup-env         # Apenas backup
+restore-env        # Apenas restauração
+
+# Ou execute diretamente (se instalado manualmente)
 ./ambiente-gui.sh
-
-# Apenas backup
 ./backup-gui.sh
-
-# Apenas restauração
 ./restore-gui.sh
 ```
 
@@ -25,32 +71,52 @@ Agora com interface gráfica **zenity** para facilitar o uso!
 - 📋 Resumo detalhado antes da execução
 - 💡 Ajuda contextual integrada
 
-## Quick Start - Passo a Passo
+## 📋 Quick Start
 
-### 1. Primeiro uso - Configuração inicial
+### Primeiro Backup
 
 ```bash
-# Clone ou navegue até o diretório do projeto
-cd ambiente
+# Abra a interface gráfica
+ambiente-backup
 
-# Torne os scripts executáveis
-chmod +x *.sh
-
-# (Opcional) Crie links simbólicos para uso global
-./install.sh
-
-# Verifique se ~/.local/bin está no PATH
-echo $PATH | grep -q "$HOME/.local/bin" || echo "Adicione ~/.local/bin ao PATH no seu .bashrc/.zshrc"
+# Ou use linha de comando (instalação manual)
+./backup-completo.sh --profile full --compression zst
 ```
 
-### 2. Gerando seu primeiro backup
+### Primeira Restauração
 
 ```bash
-# Backup completo SEM sudo (recomendado para ambiente pessoal)
-FULL_USER_LOCAL=0 ./backup-completo.sh --no-sudo --profile full --compression zst
+# Interface gráfica
+restore-env
 
-# Backup completo COM sudo (inclui configurações de sistema)
-FULL_USER_LOCAL=0 ./backup-completo.sh --profile full --compression zst
+# Ou linha de comando
+./restaurar-ambiente.sh --dry-run backup-arquivo.tar.zst
+```
+
+## 🛠️ Para Desenvolvedores
+
+### Testando Localmente
+
+```bash
+# Construir pacote local
+./build-package.sh --build
+
+# Construir e instalar
+./build-package.sh --install
+
+# Testar instalação
+./build-package.sh --test
+```
+
+### Publicando no AUR
+
+```bash
+# Configurar repositório AUR (primeira vez)
+./publish-aur.sh --setup
+
+# Publicar/atualizar
+./publish-aur.sh --publish
+```
 
 # Backup para compartilhar (sem dados pessoais/chaves)
 ./backup-completo.sh --no-sudo --profile share --sanitize
