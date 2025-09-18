@@ -221,7 +221,138 @@ do_httpd() {
 do_custom_paths(){ log "Categoria: custom_paths"; local target="$CATEGORY_DIR/custom"; mkdir -p "$target"; local list=(); [[ -n "${CUSTOM_PATHS:-}" ]] && IFS=":" read -r -a list <<< "$CUSTOM_PATHS"; if [[ -f "$META_DIR/custom_paths.txt" ]]; then while IFS= read -r line; do [[ -n $line ]] && list+=("$line"); done < "$META_DIR/custom_paths.txt"; fi; [[ ${#list[@]} -eq 0 ]] && { warn "Nenhum custom path"; return 0; }; for p in "${list[@]}"; do copy_safe "$p" "$target"; done; }
 
 select_categories_ui(){ need_cmd dialog || { err "dialog não instalado"; return 1; }; local tmp=$(mktemp); dialog --checklist "Selecione categorias" 22 72 14 1 "user_configs" off 2 "user_configs_clean" on 3 "scripts" on 4 "themes" on 5 "system_themes" on 6 "packages" off 7 "packages_explicit" on 8 "system_configs" on 9 "services" on 10 "php" off 11 "httpd" off 12 "keys (sensível)" off 13 "custom_paths" off 2>"$tmp"; local res=$(<"$tmp"); rm -f "$tmp"; res=${res//\"/}; local out=(); for token in $res; do case "$token" in 1) out+=(user_configs);;2) out+=(user_configs_clean);;3) out+=(scripts);;4) out+=(themes);;5) out+=(system_themes);;6) out+=(packages);;7) out+=(packages_explicit);;8) out+=(system_configs);;9) out+=(services);;10) out+=(php);;11) out+=(httpd);;12) out+=(keys);;13) out+=(custom_paths);; esac; done; echo "${out[@]}"; }
-select_categories_zenity(){ need_cmd zenity || { err "zenity não instalado"; return 1; }; local profile=$(zenity --list --radiolist --title="Backup" --text="Selecione perfil" --column="Sel" --column="Perfil" --column="Descrição" TRUE core "Essencial" FALSE full "Completo" FALSE share "Compartilhável" FALSE minimal "Mínimo" FALSE custom "Custom" 2>/dev/null) || return 1; local categories=(); if [[ $profile != custom ]]; then local var="PROFILE_${profile}[@]"; categories=( ${!var} ); else local sel=$(zenity --list --checklist --title="Categorias" --text="Escolha" --column="Sel" --column="Categoria" --column="Descrição" FALSE user_configs "Config completa" TRUE user_configs_clean "Config limpa" TRUE scripts "Scripts" TRUE themes "Temas" TRUE system_themes "Temas sistema" FALSE packages "Pacotes todos" TRUE packages_explicit "Pacotes explícitos" TRUE services "Services" TRUE system_configs "/etc configs" FALSE php "PHP" FALSE httpd "HTTPD" FALSE keys "Chaves" FALSE custom_paths "Custom" --separator=" " 2>/dev/null) || return 1; read -r -a categories <<< "$sel"; fi; if printf '%s\n' "${categories[@]}" | grep -q '^custom_paths$'; then local custom_file="$META_DIR/custom_paths.txt"; : > "$custom_file"; while zenity --question --title="Caminhos" --text="Adicionar caminho?" 2>/dev/null; do local path=$(zenity --file-selection --filename="$HOME/" 2>/dev/null) || break; [[ -n $path ]] && echo "$path" >> "$custom_file"; done; fi; echo "${categories[@]}"; }
+select_categories_zenity(){ 
+    need_cmd zenity || { err "zenity não instalado"; return 1; }
+    
+    while true; do
+        # Tela inicial - seleção de perfil
+        local profile
+        profile=$(zenity --list --radiolist --title="Backup - Selecionar Perfil" \
+            --text="Escolha um perfil de backup:" \
+            --column="Sel" --column="Perfil" --column="Descrição" \
+            --ok-label="Continuar" --cancel-label="Cancelar" \
+            TRUE core "Essencial - Configurações principais" \
+            FALSE full "Completo - Tudo incluído" \
+            FALSE share "Compartilhável - Sem dados pessoais" \
+            FALSE minimal "Mínimo - Apenas scripts e pacotes" \
+            FALSE custom "Personalizado - Escolher categorias" \
+            2>/dev/null)
+        
+        # Se cancelou na tela inicial, sair do programa
+        if [[ $? -ne 0 ]]; then
+            log "Backup cancelado pelo usuário"
+            exit 0
+        fi
+        
+        local categories=()
+        
+        if [[ $profile != custom ]]; then
+            # Perfil pré-definido
+            local var="PROFILE_${profile}[@]"
+            categories=( ${!var} )
+            
+            # Tela de confirmação final para perfis pré-definidos
+            local profile_desc=""
+            case "$profile" in
+                core) profile_desc="Configurações essenciais e pacotes" ;;
+                full) profile_desc="Backup completo de tudo" ;;
+                share) profile_desc="Backup compartilhável (sem dados pessoais)" ;;
+                minimal) profile_desc="Apenas scripts e lista de pacotes" ;;
+            esac
+            
+            if zenity --question --title="Confirmar Backup" \
+                --width=400 --height=200 \
+                --text="<b>Perfil:</b> $profile\n<b>Descrição:</b> $profile_desc\n\n<b>Categorias incluídas:</b>\n• ${categories[*]// /\n• }\n\nDeseja iniciar o backup agora?" \
+                --ok-label="🚀 Fazer Backup" --cancel-label="⬅️ Voltar" 2>/dev/null; then
+                break  # Confirmado, sair do loop
+            else
+                continue  # Voltar para seleção de perfil
+            fi
+        else
+            # Perfil personalizado - mostrar categorias
+            while true; do
+                local sel
+                sel=$(zenity --list --checklist --title="Backup - Categorias Personalizadas" \
+                    --text="Escolha as categorias para backup:" \
+                    --column="Sel" --column="Categoria" --column="Descrição" \
+                    --ok-label="Continuar" --cancel-label="Voltar" \
+                    --separator=" " \
+                    FALSE user_configs "Configurações completas do usuário" \
+                    TRUE user_configs_clean "Configurações limpas (sem cache)" \
+                    TRUE scripts "Scripts e executáveis pessoais" \
+                    TRUE themes "Temas e ícones do usuário" \
+                    TRUE system_themes "Temas do sistema" \
+                    FALSE packages "Todos os pacotes instalados" \
+                    TRUE packages_explicit "Pacotes instalados explicitamente" \
+                    TRUE services "Serviços do sistema" \
+                    TRUE system_configs "Configurações do sistema (/etc)" \
+                    FALSE php "Configurações PHP" \
+                    FALSE httpd "Configurações Apache/Nginx" \
+                    FALSE keys "Chaves SSH/GPG (sensível)" \
+                    FALSE custom_paths "Caminhos personalizados" \
+                    2>/dev/null)
+                
+                if [[ $? -ne 0 ]]; then
+                    # Voltou - sair do loop interno para voltar à seleção de perfil
+                    break
+                fi
+                
+                # Se chegou aqui, tem seleção válida
+                read -r -a categories <<< "$sel"
+                
+                # Validar se pelo menos uma categoria foi selecionada
+                if [[ ${#categories[@]} -eq 0 ]]; then
+                    zenity --warning --title="Nenhuma Categoria" \
+                        --text="Você deve selecionar pelo menos uma categoria para o backup.\n\nTente novamente." 2>/dev/null
+                    continue  # Voltar para seleção de categorias
+                fi
+                
+                # Tela de confirmação final para categorias personalizadas
+                if zenity --question --title="Confirmar Backup Personalizado" \
+                    --width=400 --height=200 \
+                    --text="<b>Backup Personalizado</b>\n\n<b>Categorias selecionadas:</b>\n• ${categories[*]// /\n• }\n\nDeseja iniciar o backup agora?" \
+                    --ok-label="🚀 Fazer Backup" --cancel-label="⬅️ Voltar" 2>/dev/null; then
+                    # Confirmado, sair dos loops
+                    break 2
+                else
+                    continue  # Voltar para seleção de categorias
+                fi
+            done
+            
+            # Se chegou aqui e categories está vazio, significa que voltou
+            if [[ ${#categories[@]} -eq 0 ]]; then
+                continue  # Voltar para seleção de perfil
+            fi
+        fi
+    done
+    
+    # Se escolheu custom_paths, configurar caminhos
+    if printf '%s\n' "${categories[@]}" | grep -q '^custom_paths$'; then
+        local custom_file="$META_DIR/custom_paths.txt"
+        : > "$custom_file"
+        
+        while true; do
+            if zenity --question --title="Caminhos Personalizados" \
+                --text="Deseja adicionar um caminho personalizado para backup?" \
+                --ok-label="Sim" --cancel-label="Não" 2>/dev/null; then
+                
+                local path
+                path=$(zenity --file-selection --directory --title="Selecionar Diretório" \
+                    --filename="$HOME/" 2>/dev/null)
+                
+                if [[ $? -eq 0 && -n $path ]]; then
+                    echo "$path" >> "$custom_file"
+                    zenity --info --title="Caminho Adicionado" \
+                        --text="Caminho adicionado: $path" 2>/dev/null
+                fi
+            else
+                break
+            fi
+        done
+    fi
+    
+    echo "${categories[@]}"
+}
 
 generate_manifest(){ log "Gerando manifest"; ( cd "$WORK_DIR" && find categories -type f -print0 | sort -z | xargs -0 sha256sum > "$META_DIR/manifest.sha256" ) || true; local file_count size_bytes; file_count=$(find "$WORK_DIR/categories" -type f 2>/dev/null | wc -l | awk '{print $1}'); size_bytes=$(du -sb "$WORK_DIR/categories" 2>/dev/null | awk '{print $1}'); cat > "$META_DIR/metadata.json" <<JSON
 {"version":"$VERSION","timestamp":"$TIMESTAMP","archive":"PENDENTE","compression":"$COMPRESS_FORMAT","categories":"${SELECTED_CATEGORIES:-}","sanitized":"${SANITIZE:-0}","file_count":$file_count,"size_bytes":$size_bytes}
