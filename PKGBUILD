@@ -23,7 +23,7 @@ optdepends=(
     'apache: para backup de configurações Apache'
     'nginx: para backup de configurações Nginx'
 )
-source=("git+https://github.com/Pombaa/Backup-e-restaurador-de-ambiente.git#branch=main")
+source=("git+https://github.com/Pombaa/Backup-e-restaurador-de-ambiente.git#tag=v${pkgver}")
 sha256sums=('SKIP')
 
 package() {
