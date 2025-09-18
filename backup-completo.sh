@@ -14,46 +14,30 @@ VERSION="1.2.1"
 #   SYSTEM_THEMES_LIMIT=<N>  -> se definido, limita número de diretórios copiados (debug)
 
 # Função para solicitar sudo no início (varre argumentos de forma segura)
-ensure_sudo() {
-    [[ "${NO_SUDO:-0}" == "1" ]] && return 0
-    local needs_sudo=false
-    local args=("$@")
-    local i=0
-    while [[ $i -lt ${#args[@]} ]]; do
-        case "${args[$i]}" in
-            --no-sudo)
-                return 0 ;;
-            --profile)
-                ((i++))
-                local profile="${args[$i]:-}"
-                case "$profile" in full|core) needs_sudo=true ;; esac ;;
-            --categories)
-                ((i++))
-                local cats="${args[$i]:-}"
-                if [[ "$cats" =~ (system_configs|services|php|httpd) ]]; then needs_sudo=true; fi ;;
-        esac
-        ((i++))
+ensure_sudo(){ 
+    local no_sudo=0
+    for arg in "$@"; do
+        [[ "$arg" == "--no-sudo" ]] && no_sudo=1 && break
     done
-    if [[ "$needs_sudo" == "false" ]]; then
+    if [[ $no_sudo == 1 ]]; then
+        log "Modo --no-sudo ativo - não solicitando privilégios"
         return 0
     fi
-    
-    if sudo -n true 2>/dev/null; then
-        log "Sudo já disponível"
-        return 0
+    [[ $UID -eq 0 ]] && return 0
+    if ! sudo -n true 2>/dev/null; then
+        if [[ -n ${DISPLAY:-} ]] && command -v zenity >/dev/null 2>&1; then
+            local passwd
+            passwd=$(zenity --password --title="Senha do sudo" --text="Digite a senha para obter privilégios administrativos:" 2>/dev/null) || { log "Senha cancelada pelo usuário"; return 1; }
+            echo "$passwd" | sudo -S true 2>/dev/null || { log "Senha incorreta ou sudo falhou"; return 1; }
+        else
+            log "Solicitando sudo via terminal..."
+            sudo true || return 1
+        fi
     fi
-    
-    log "Algumas categorias precisam de privilégios administrativos..."
-    log "Digite sua senha sudo (será usada para /etc configs, services, php, httpd):"
-    if sudo -v; then
-        log "Sudo autenticado com sucesso"
-        ( while true; do sleep 60; sudo -n true; done ) 2>/dev/null &
-        SUDO_PID=$!
-        trap "kill $SUDO_PID 2>/dev/null || true" EXIT
-    else
-        warn "Falha na autenticação sudo. Algumas categorias serão puladas."
-    fi
+    log "Privilégios administrativos obtidos com sucesso"
 }
+
+need_cmd(){ command -v "$1" >/dev/null 2>&1 || { warn "Comando '$1' ausente"; return 1; }; }
 
 BACKUP_ROOT_DIR="${BACKUP_ROOT_DIR:-$HOME/backups}"
 COMPRESS_FORMAT="${COMPRESS_FORMAT:-gz}"  # gz | xz | zst
@@ -70,6 +54,13 @@ PROFILE_full=(user_configs packages system_configs services php httpd keys scrip
 PROFILE_core=(user_configs_clean scripts themes system_themes packages_explicit services system_configs php httpd)
 PROFILE_share=(user_configs_clean scripts themes packages_explicit php httpd)
 PROFILE_minimal=(scripts packages_explicit)
+
+# Funções de logging e utilitários
+log(){ printf '[backup] %s\n' "$*" >&2; }
+warn(){ printf '[backup][WARN] %s\n' "$*" >&2; }
+err(){ printf '[backup][ERRO] %s\n' "$*" >&2; }
+need_cmd(){ command -v "$1" >/dev/null 2>&1 || { warn "Comando '$1' ausente"; return 1; }; }
+copy_safe(){ local src="$1" dst="$2"; [[ -e $src ]] || return 0; mkdir -p "$dst" 2>/dev/null || true; if [[ -d $src ]]; then if command -v rsync >/dev/null 2>&1; then rsync -a --exclude '.git' "$src" "$dst" 2>/dev/null || cp -r "$src" "$dst" 2>/dev/null || true; else cp -r "$src" "$dst" 2>/dev/null || true; fi; else cp "$src" "$dst" 2>/dev/null || true; fi; }
 
 list_profiles(){ echo "Perfis disponíveis:" >&2; compgen -A variable PROFILE_ | sed 's/^PROFILE_//' | sort | while read -r p; do local arr="PROFILE_${p}[@]"; echo "  - ${p}: ${!arr}" >&2; done; }
 
@@ -127,8 +118,42 @@ do_system_themes(){ log "Categoria: system_themes"; local target="$CATEGORY_DIR/
 do_keys(){ log "Categoria: keys"; local target="$CATEGORY_DIR/keys"; mkdir -p "$target"; local copied=0; if [[ -d "$HOME/.ssh" ]]; then log "Copiando ~/.ssh..."; copy_safe "$HOME/.ssh" "$target"; copied=1; fi; if [[ -d "$HOME/.gnupg" ]]; then log "Copiando ~/.gnupg..."; copy_safe "$HOME/.gnupg" "$target"; copied=1; fi; chmod -R go-rwx "$target" 2>/dev/null || true; [[ $copied -eq 1 ]] && log "keys: $(find "$target" -type f 2>/dev/null | wc -l) arquivos copiados" || warn "Nenhuma chave encontrada"; }
 do_packages(){ log "Categoria: packages"; local target="$CATEGORY_DIR/packages"; mkdir -p "$target"; need_cmd pacman || return 0; pacman -Qqen > "$target/pacman-explicit.txt" || true; pacman -Qqem > "$target/aur-explicit.txt" || true; pacman -Qq > "$target/all.txt" || true; }
 do_packages_explicit(){ log "Categoria: packages_explicit"; local target="$CATEGORY_DIR/packages"; mkdir -p "$target"; need_cmd pacman || return 0; pacman -Qqen > "$target/pacman-explicit.txt" || true; pacman -Qqem > "$target/aur-explicit.txt" || true; }
-do_services(){ log "Categoria: services"; local target="$CATEGORY_DIR/services"; mkdir -p "$target"; systemctl list-unit-files --state=enabled --user > "$target/systemd-user-enabled.txt" 2>/dev/null || true; if sudo -n true 2>/dev/null; then sudo systemctl list-unit-files --state=enabled > "$target/systemd-system-enabled.txt" 2>/dev/null || true; else warn "Sem sudo services system"; fi; }
-do_system_configs(){ log "Categoria: system_configs"; local target="$CATEGORY_DIR/system_configs"; mkdir -p "$target"; if sudo -n true 2>/dev/null; then local etc_files=(/etc/pacman.conf /etc/makepkg.conf /etc/hosts /etc/fstab); for f in "${etc_files[@]}"; do sudo cp "$f" "$target/" 2>/dev/null || true; done; for d in /etc/X11/xorg.conf.d /etc/systemd/system /etc/udev/rules.d; do [[ -d $d ]] && sudo cp -r "$d" "$target/" 2>/dev/null || true; done; else warn "Sem sudo system_configs"; fi; }
+do_services() { 
+    log "Categoria: services"
+    local target="$CATEGORY_DIR/services"
+    mkdir -p "$target"
+    
+    # Services do usuário (não precisa sudo)
+    systemctl list-unit-files --state=enabled --user > "$target/systemd-user-enabled.txt" 2>/dev/null || true
+    
+    # Services do sistema (precisa sudo)
+    if sudo -n true 2>/dev/null; then
+        sudo systemctl list-unit-files --state=enabled > "$target/systemd-system-enabled.txt" 2>/dev/null || true
+        log "services: user + system salvos"
+    else
+        warn "Sem sudo - apenas services do usuário salvos"
+    fi
+}
+do_system_configs() { 
+    log "Categoria: system_configs"
+    local target="$CATEGORY_DIR/system_configs"
+    mkdir -p "$target"
+    
+    if sudo -n true 2>/dev/null; then
+        local etc_files=(/etc/pacman.conf /etc/makepkg.conf /etc/hosts /etc/fstab)
+        for f in "${etc_files[@]}"; do
+            [[ -f "$f" ]] && sudo cp "$f" "$target/" 2>/dev/null || true
+        done
+        
+        for d in /etc/X11/xorg.conf.d /etc/systemd/system /etc/udev/rules.d; do
+            [[ -d "$d" ]] && sudo cp -r "$d" "$target/" 2>/dev/null || true
+        done
+        
+        log "system_configs: $(find "$target" -type f 2>/dev/null | wc -l) arquivos copiados"
+    else
+        warn "Sem sudo - system_configs ignorado"
+    fi
+}
 do_php() {
     log "Categoria: php"
     local target="$CATEGORY_DIR/php"
