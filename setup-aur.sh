@@ -19,7 +19,25 @@ show_ssh_key() {
     log "Sua chave SSH pública para adicionar ao AUR:"
     echo
     echo "=============================================="
-    cat ~/.ssh/id_rsa.pub
+    
+    # Encontrar e mostrar chave SSH pública
+    local found_key=false
+    for key_type in ed25519 rsa ecdsa; do
+        local pub_key="$HOME/.ssh/id_$key_type.pub"
+        if [[ -f "$pub_key" ]]; then
+            cat "$pub_key"
+            found_key=true
+            break
+        fi
+    done
+    
+    if [[ "$found_key" == "false" ]]; then
+        echo "NENHUMA CHAVE SSH ENCONTRADA!"
+        echo
+        echo "Gere uma chave SSH primeiro:"
+        echo "  ssh-keygen -t ed25519 -C \"seu-email@exemplo.com\""
+    fi
+    
     echo "=============================================="
     echo
 }
@@ -27,13 +45,29 @@ show_ssh_key() {
 configure_ssh() {
     log "Configurando SSH para AUR..."
     
+    # Detectar chave SSH existente
+    local ssh_key=""
+    for key_type in rsa ed25519 ecdsa; do
+        if [[ -f "$HOME/.ssh/id_$key_type" ]]; then
+            ssh_key="~/.ssh/id_$key_type"
+            break
+        fi
+    done
+    
+    if [[ -z "$ssh_key" ]]; then
+        warn "Nenhuma chave SSH encontrada. Gere uma com:"
+        echo "  ssh-keygen -t ed25519 -C \"seu-email@exemplo.com\""
+        return 1
+    fi
+    
     # Criar configuração SSH para AUR
     if ! grep -q "Host aur.archlinux.org" ~/.ssh/config 2>/dev/null; then
+        mkdir -p ~/.ssh
         echo "" >> ~/.ssh/config
         echo "Host aur.archlinux.org" >> ~/.ssh/config
         echo "  HostName aur.archlinux.org" >> ~/.ssh/config
         echo "  User aur" >> ~/.ssh/config
-        echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        echo "  IdentityFile $ssh_key" >> ~/.ssh/config
         echo "  StrictHostKeyChecking accept-new" >> ~/.ssh/config
         success "Configuração SSH adicionada"
     else

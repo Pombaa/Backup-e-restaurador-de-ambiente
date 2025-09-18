@@ -138,9 +138,21 @@ show_completion_message() {
     
     if [[ "$USER_INSTALL" == "1" ]]; then
         if [[ ":$PATH:" != *":$bin_dir:"* ]]; then
+            # Detectar arquivo de configuração do shell
+            local shell_rc=""
+            if [[ "$SHELL" == *"zsh"* ]]; then
+                shell_rc="~/.zshrc"
+            elif [[ "$SHELL" == *"bash"* ]]; then
+                shell_rc="~/.bashrc"
+            elif [[ "$SHELL" == *"fish"* ]]; then
+                shell_rc="~/.config/fish/config.fish"
+            else
+                shell_rc="~/.profile"
+            fi
+            
             warn "Adicione $bin_dir ao seu PATH:"
-            echo "  echo 'export PATH=\"$bin_dir:\$PATH\"' >> ~/.bashrc"
-            echo "  source ~/.bashrc"
+            echo "  echo 'export PATH=\"$bin_dir:\$PATH\"' >> $shell_rc"
+            echo "  source $shell_rc"
             echo
         fi
     fi
