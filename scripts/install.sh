@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Instalador universal que funciona em qualquer sistema Linux
+# Instalador simples para ambiente-backup
 
 set -euo pipefail
 
 VERSION="1.2.1"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local}"
-USER_INSTALL="${USER_INSTALL:-0}"
 
 # Cores
 GREEN='\033[0;32m'
@@ -39,9 +38,8 @@ check_dependencies() {
 }
 
 detect_install_method() {
-    if [[ "$USER_INSTALL" == "1" ]] || [[ "$EUID" -ne 0 && "$INSTALL_DIR" == "/usr/local" ]]; then
+    if [[ "$EUID" -ne 0 && "$INSTALL_DIR" == "/usr/local" ]]; then
         INSTALL_DIR="$HOME/.local"
-        USER_INSTALL=1
         log "Instalação local do usuário em: $INSTALL_DIR"
     else
         log "Instalação sistema em: $INSTALL_DIR"
